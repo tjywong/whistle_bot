@@ -1,4 +1,9 @@
+import argparse
 from types import SimpleNamespace
+
+import pytest
+
+from MQTT import TEST_TOPIC, add_topic_args
 
 from whistlebot.mqtt_link import MqttLink
 from whistlebot.protocol import TOPIC
@@ -24,8 +29,8 @@ class FakeClient:
     def subscribe(self, topic):
         self.subscribed.append(topic)
 
-    def publish(self, topic, payload):
-        self.published.append((topic, payload))
+    def publish(self, topic, payload, qos=0):
+        self.published.append((topic, payload, qos))
 
 
 def make():
@@ -56,7 +61,7 @@ def test_incoming_payload_decoded():
 def test_publish_goes_to_topic():
     link, client, _ = make()
     link.publish("ball_scored")
-    assert client.published == [(TOPIC, "ball_scored")]
+    assert client.published == [(TOPIC, "ball_scored", 1)]
 
 
 def test_stop():
@@ -64,3 +69,39 @@ def test_stop():
     link.start()
     link.stop()
     assert client.connected is None and not client.looping
+
+
+def test_custom_topic():
+    received = []
+    client = FakeClient()
+    link = MqttLink("b", received.append, topic=TEST_TOPIC, client=client)
+    client.on_connect(client, None, {}, 0, None)
+    link.publish("start")
+    assert client.subscribed == [TEST_TOPIC]
+    assert client.published == [(TEST_TOPIC, "start", 1)]
+
+
+def test_connected_flag_tracks_connection():
+    link, client, _ = make()
+    assert not link.connected
+    client.on_connect(client, None, {}, 0, None)
+    assert link.connected
+    client.on_disconnect(client, None, {}, 0, None)
+    assert not link.connected
+
+
+def parse(argv):
+    parser = argparse.ArgumentParser()
+    add_topic_args(parser)
+    return parser.parse_args(argv)
+
+
+def test_topic_args():
+    assert parse([]).topic == TOPIC
+    assert parse(["--test-topic"]).topic == TEST_TOPIC == "ME193/Rogers/tyler-test"
+    assert parse(["--topic", "x/y"]).topic == "x/y"
+
+
+def test_topic_args_are_exclusive():
+    with pytest.raises(SystemExit):
+        parse(["--test-topic", "--topic", "x"])

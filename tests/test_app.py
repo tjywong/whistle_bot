@@ -9,13 +9,14 @@ from whistlebot.songs import DEFEAT, VICTORY, synthesize
 from tests.helpers import FakeLight, FakeMotors, silence, tone
 
 
-def make(role):
+def make(role, log=None):
     motors, light = FakeMotors(), FakeLight(50)
     published, played = [], []
     app = BotApp(role, Drive(motors, step=20), light,
                  LightGuard(delta=15, trip_frames=2),
                  WhistleDecoder(hold_frames=2, goal_hold_frames=4),
-                 published.append, played.append)
+                 published.append, played.append,
+                 log=log.append if log is not None else lambda msg: None)
     return app, motors, light, published, played
 
 
@@ -109,3 +110,49 @@ def test_light_baseline_taken_at_start():
     for _ in range(5):
         app.step(silence())
     assert published == []
+
+
+def hear(app, payload):
+    app.inbox.put(payload)
+    app.step(silence())
+
+
+def test_message_before_start_is_reported_as_ignored():
+    log = []
+    app, _, _, _, played = make(Role.GOALIE, log)
+    hear(app, "ball_caught")
+    assert played == []
+    assert "round not started" in app.last_message
+    assert any("'ball_caught'" in line and "send 'start' first" in line for line in log)
+
+
+def test_handled_message_is_reported():
+    log = []
+    app, *_ = make(Role.GOALIE, log)
+    hear(app, "start")
+    hear(app, "ball_caught")
+    assert app.last_message == "'ball_caught' -> halt, play_victory"
+    assert "Playing victory song" in log
+    assert "Round started: whistle to drive" in log
+
+
+def test_unknown_message_is_reported():
+    app, *_ = make(Role.GOALIE)
+    hear(app, "hello")
+    assert "not a game message" in app.last_message
+
+
+def test_message_after_round_over_is_reported():
+    app, *_ = make(Role.GOALIE)
+    hear(app, "start")
+    hear(app, "ball_caught")
+    hear(app, "ball_scored")
+    assert app.last_message == "'ball_scored' -> ignored while won"
+
+
+def test_ball_logs_what_it_sends():
+    log = []
+    app, *_ = make(Role.BALL, log)
+    start(app)
+    whistle(app, 3500, 4)
+    assert "MQTT sending 'ball_scored'" in log

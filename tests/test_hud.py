@@ -75,6 +75,7 @@ def test_hud_refresh_smoke(root):
     hud.refresh()
     text = hud.status.cget("text")
     assert "BALL" in text and "2000 Hz" in text and "SPEED_UP" in text
+    assert "MQTT: nothing heard yet" in text
     assert len(hud.fft.coords(hud.fft_line)) > 100
 
 

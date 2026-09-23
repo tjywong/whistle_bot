@@ -136,6 +136,7 @@ class Hud:
         text = (f"Role {app.game.role.value.upper():6}  Phase {app.game.phase.value.upper():8}  "
                 f"Pitch {pitch}  Last cmd {cmd:8}  Wheels L{left:+4d} R{right:+4d}\n"
                 f"Level {level:5.0f} / threshold {self.min_rms:.0f} ({loud})")
+        text += f"\nMQTT: {getattr(app, 'last_message', None) or 'nothing heard yet'}"
         if self.loop.error:
             text += f"\nCONTROL LOOP STOPPED: {self.loop.error!r}"
         return text

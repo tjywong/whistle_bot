@@ -11,6 +11,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox
 
+from MQTT import add_topic_args
 from whistlebot import calibration as cal
 from whistlebot.app import BotApp
 from whistlebot.audio_io import Microphone, Speaker
@@ -33,6 +34,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--broker", help="MQTT broker host (required unless --no-mqtt)")
     parser.add_argument("--port", type=int, default=1883)
+    add_topic_args(parser)
     parser.add_argument("--motor-card", type=parse_card, default=MOTOR_CARD,
                         help="Double Motor connection card as color:serial "
                              "(default: blue:3685)")
@@ -143,7 +145,8 @@ def main():
             app.inbox.put(app.messages.encode(Event.START))  # start immediately
             print(f"{role.value} ready on mic '{mic.name}'; TEST MODE, whistle to drive")
         else:
-            link = MqttLink(args.broker, on_payload=app.inbox.put, port=args.port)
+            link = MqttLink(args.broker, on_payload=app.inbox.put, port=args.port,
+                            topic=args.topic)
             link.start()
             print(f"{role.value} ready on mic '{mic.name}'; waiting for 'start' on {link.topic}")
         loop = ControlLoop(app, mic.read)
