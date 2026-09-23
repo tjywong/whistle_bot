@@ -1,9 +1,10 @@
-"""MQTT messages shared with the opponent. Agree on these before the match."""
+"""MQTT messages shared with the opponent. The agreed text lives in MQTT.py."""
 
 from dataclasses import dataclass
 from enum import Enum
 
-TOPIC = "ME193/Rogers"
+import MQTT
+from MQTT import TOPIC
 
 
 class Event(Enum):
@@ -14,10 +15,10 @@ class Event(Enum):
 
 @dataclass(frozen=True)
 class Messages:
-    """Payload text for each event. Change these to match your opponent."""
-    start: str = "start"
-    ball_caught: str = "ball_caught"
-    ball_scored: str = "ball_scored"
+    """Payload text for each event. Defaults come from MQTT.py."""
+    start: str = MQTT.START
+    ball_caught: str = MQTT.BALL_CAUGHT
+    ball_scored: str = MQTT.BALL_SCORED
 
     def encode(self, event):
         return {
