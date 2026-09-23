@@ -1,0 +1,5 @@
+legoeducation
+numpy
+paho-mqtt>=2.0
+pyaudio
+pytest
