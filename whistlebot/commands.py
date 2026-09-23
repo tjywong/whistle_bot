@@ -8,6 +8,8 @@ from .pitch import MAX_HZ
 
 class Command(Enum):
     STOP = "stop"
+    FORWARD = "forward"
+    BACKWARD = "backward"
     LEFT = "left"
     RIGHT = "right"
     SPEED_UP = "speed_up"
@@ -21,9 +23,11 @@ class Bands:
     Pitches that fall between ranges are ignored, so gaps help reject
     background noise. Field names match ``Command`` values.
     """
-    stop: tuple = (600.0, 1000.0)
-    left: tuple = (1000.0, 1500.0)
-    right: tuple = (1500.0, 2200.0)
+    stop: tuple = (600.0, 900.0)
+    backward: tuple = (900.0, 1200.0)
+    left: tuple = (1200.0, 1500.0)
+    right: tuple = (1500.0, 1850.0)
+    forward: tuple = (1850.0, 2200.0)
     speed_up: tuple = (2200.0, 3000.0)
     goal: tuple = (3000.0, 4500.0)
 
@@ -54,8 +58,36 @@ class Bands:
 
     @classmethod
     def from_dict(cls, data):
-        return cls(**{k: (float(v[0]), float(v[1])) for k, v in data.items()
-                      if k in {f.name for f in fields(cls)}})
+        """Build from saved ranges. Commands missing from ``data`` (e.g. ones
+        added after it was saved) are fitted into the largest free gap."""
+        names = {f.name for f in fields(cls)}
+        known = {k: (float(v[0]), float(v[1])) for k, v in data.items() if k in names}
+        missing = [c for c in Command if c.value not in known]
+        if not missing or not known:
+            return cls(**known)
+        return fit_into_gap(cls(**known), missing)
+
+
+def fit_into_gap(bands, commands, low_hz=600.0, margin_frac=0.05):
+    """Give ``commands`` equal slices of the widest frequency gap that the
+    other commands' ranges leave free between ``low_hz`` and MAX_HZ."""
+    taken = sorted(r for c, r in bands.items() if c not in commands)
+    edges, cursor = [], low_hz
+    for lo, hi in taken:
+        if lo > cursor:
+            edges.append((cursor, lo))
+        cursor = max(cursor, hi)
+    if cursor < MAX_HZ:
+        edges.append((cursor, MAX_HZ))
+    if not edges:
+        raise ValueError("no free frequency range left for new commands")
+    gap_lo, gap_hi = max(edges, key=lambda e: e[1] - e[0])
+    width = (gap_hi - gap_lo) / len(commands)
+    for i, cmd in enumerate(commands):
+        lo = gap_lo + i * width
+        margin = width * margin_frac
+        bands = bands.with_range(cmd, round(lo + margin), round(lo + width - margin))
+    return bands
 
 
 def classify(freq, bands=Bands()):

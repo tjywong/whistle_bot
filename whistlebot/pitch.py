@@ -48,4 +48,16 @@ def dominant_frequency(samples, sample_rate=SAMPLE_RATE, min_hz=MIN_HZ,
     # A louder sound outside the band (hum, bass) means this isn't a whistle.
     if in_band[peak] < 0.5 * spectrum.max():
         return None
-    return float(freqs[band][peak])
+    return _refine_peak(spectrum, int(np.flatnonzero(band)[peak]), sample_rate / x.size)
+
+
+def _refine_peak(spectrum, k, bin_hz):
+    """Sub-bin peak frequency by fitting a parabola through the log
+    magnitudes around bin ``k``. Bins are ~21 Hz wide, too coarse to tell
+    half steps apart at low pitches; this gets within a few Hz."""
+    if 0 < k < len(spectrum) - 1:
+        a, b, c = np.log(spectrum[k - 1:k + 2] + 1e-12)
+        denom = a - 2 * b + c
+        if denom < 0:
+            return float((k + 0.5 * (a - c) / denom) * bin_hz)
+    return float(k * bin_hz)

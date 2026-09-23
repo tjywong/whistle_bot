@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .commands import Bands, Command
+from .commands import Bands, Command, fit_into_gap
 from .pitch import MAX_HZ, MIN_RMS, MIN_TONALITY, dominant_frequency, rms
 
 
@@ -54,37 +54,59 @@ def median_pitch(freqs, min_count=5):
     return float(np.median(heard))
 
 
-def record_band(bands, cmd, center, width_frac=0.15, min_gap_hz=40.0):
-    """Give ``cmd`` a range around the whistled ``center`` and trim any other
-    command whose range it overlaps.
+HALF_STEP = 2 ** (1 / 12)     # ~5.9% higher
+QUARTER_TONE = 2 ** (1 / 24)  # ~2.9%: the closest two recorded whistles may be
 
-    The new range spans ±``width_frac`` but stops halfway to the other
-    commands' centres, so each keeps its own whistle. Raises ValueError if
-    ``center`` is within ``min_gap_hz`` of another command's centre.
+
+def _centre(low, high):
+    return (low * high) ** 0.5  # geometric: pitch is perceived on a log scale
+
+
+def record_band(bands, cmd, center, fixed=None, width_frac=0.15,
+                min_ratio=QUARTER_TONE):
+    """Give ``cmd`` a range around the whistled ``center``.
+
+    The range spans ±``width_frac`` but stops at the (log-scale) midpoint
+    to every other command's pitch, so whistles a half step apart each
+    get their own range. ``fixed`` maps already-recorded commands to the
+    pitch actually whistled; those must be at least ``min_ratio`` away or
+    ValueError is raised. Any other command that close is moved into free
+    space instead. Overlapped neighbours are trimmed.
+
+    Returns (new Bands, list of commands that were moved).
     """
+    fixed = fixed or {}
     low, high = center * (1 - width_frac), center * (1 + width_frac)
-    for other, (o_low, o_high) in bands.items():
-        if other is cmd:
+    moved = []
+    others = [(c, r) for c, r in bands.items() if c is not cmd]
+    pitch_of = {c: fixed.get(c) or _centre(*r) for c, r in others}
+    for other, _ in others:
+        o_center = pitch_of[other]
+        ratio = max(o_center, center) / min(o_center, center)
+        if ratio < min_ratio:
+            if other in fixed:
+                raise ValueError(f"{center:.0f} Hz is within a quarter tone of "
+                                 f"{other.name} ({o_center:.0f} Hz); pick a different pitch")
+            moved.append(other)
             continue
-        o_center = (o_low + o_high) / 2
-        if abs(o_center - center) < min_gap_hz:
-            raise ValueError(f"{center:.0f} Hz is too close to {other.name} "
-                             f"({o_center:.0f} Hz); pick a more different pitch")
+        mid = _centre(o_center, center)
         if o_center < center:
-            low = max(low, (o_center + center) / 2)
+            low = max(low, mid)
         else:
-            high = min(high, (o_center + center) / 2)
+            high = min(high, mid)
     low, high = max(low, 0.0), min(high, MAX_HZ)
 
     result = bands.with_range(cmd, low, high)
-    for other, (o_low, o_high) in bands.items():
-        if other is cmd or o_high <= low or o_low >= high:
+    for other, (o_low, o_high) in others:
+        if other in moved or o_high <= low or o_low >= high:
             continue
-        if (o_low + o_high) / 2 < center:
+        if pitch_of[other] < center:
             result = result.with_range(other, o_low, low)
         else:
             result = result.with_range(other, high, o_high)
-    return result.validate()
+    if moved:
+        result = fit_into_gap(result, moved)
+    return result.validate(), moved
 
 
 def noise_threshold(rms_values, factor=3.0, floor=MIN_RMS):

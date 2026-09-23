@@ -51,7 +51,7 @@ def test_scales():
 
 def test_band_regions_cover_bands_in_order():
     regions = band_regions(Bands())
-    assert [r[0] for r in regions] == ["STOP", "LEFT", "RIGHT", "FASTER", "GOAL"]
+    assert [r[0] for r in regions] == ["STOP", "BACK", "LEFT", "RIGHT", "FWD", "FASTER", "GOAL"]
     for (_, _, hi, _), (_, lo, _, _) in zip(regions, regions[1:]):
         assert hi == lo
 

@@ -53,6 +53,60 @@ def test_turn_while_stopped_pivots():
     assert motors.last == (20, -20)
 
 
+def test_forward_from_stop_starts_slow():
+    drive, motors = make(step=20)
+    drive.apply(Command.FORWARD)
+    assert motors.last == (20, 20)
+
+
+def test_backward_from_stop_reverses():
+    drive, motors = make(step=20)
+    drive.apply(Command.BACKWARD)
+    assert motors.last == (-20, -20)
+
+
+def test_backward_keeps_current_speed():
+    drive, motors = make(step=20)
+    drive.apply(Command.SPEED_UP)
+    drive.apply(Command.SPEED_UP)
+    drive.apply(Command.BACKWARD)
+    assert motors.last == (-40, -40)
+    drive.apply(Command.FORWARD)
+    assert motors.last == (40, 40)
+
+
+def test_speed_up_while_reversing_goes_faster_backwards():
+    drive, motors = make(step=20)
+    drive.apply(Command.BACKWARD)
+    drive.apply(Command.SPEED_UP)
+    assert motors.last == (-40, -40)
+
+
+def test_turning_while_reversing():
+    drive, motors = make(step=50, turn_ratio=0.4)
+    drive.apply(Command.BACKWARD)
+    drive.apply(Command.LEFT)
+    assert motors.last == (-20, -50)
+    drive.apply(Command.RIGHT)
+    assert motors.last == (-50, -20)
+
+
+def test_forward_straightens():
+    drive, motors = make(step=20)
+    drive.apply(Command.FORWARD)
+    drive.apply(Command.LEFT)
+    drive.apply(Command.FORWARD)
+    assert motors.last == (20, 20)
+
+
+def test_stop_resets_direction():
+    drive, motors = make(step=20)
+    drive.apply(Command.BACKWARD)
+    drive.apply(Command.STOP)
+    drive.apply(Command.SPEED_UP)
+    assert motors.last == (20, 20)
+
+
 def test_goal_command_does_not_touch_motors():
     drive, motors = make()
     drive.apply(Command.GOAL)

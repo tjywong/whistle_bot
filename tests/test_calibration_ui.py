@@ -37,6 +37,25 @@ def test_record_updates_range(root):
     assert "1850" in w.heard[Command.RIGHT].cget("text")
 
 
+def test_recorded_commands_are_protected(root):
+    w, monitor = make(root)
+    fake_recording(monitor, [1000] * 10)
+    w._finish_record(Command.LEFT)
+    fake_recording(monitor, [1005] * 10)   # far less than a half step
+    w._finish_record(Command.RIGHT)
+    assert "quarter tone" in w.msg.cget("text")
+
+
+def test_half_step_recordings_accepted(root):
+    w, monitor = make(root)
+    fake_recording(monitor, [1000] * 10)
+    w._finish_record(Command.LEFT)
+    fake_recording(monitor, [1059.5] * 10)
+    w._finish_record(Command.RIGHT)
+    assert "set to 1060" in w.msg.cget("text")
+    assert float(w.high[Command.LEFT].get()) <= float(w.low[Command.RIGHT].get())
+
+
 def test_record_with_no_whistle_shows_error(root):
     w, monitor = make(root)
     fake_recording(monitor, [None] * 10)

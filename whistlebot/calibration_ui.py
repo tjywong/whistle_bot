@@ -11,6 +11,8 @@ RECORD_MS = 1500
 NOISE_MS = 2000
 LABELS = {
     Command.STOP: "Stop",
+    Command.FORWARD: "Forward",
+    Command.BACKWARD: "Backward",
     Command.LEFT: "Turn left",
     Command.RIGHT: "Turn right",
     Command.SPEED_UP: "Speed up",
@@ -31,6 +33,7 @@ class CalibrationWindow:
         self.monitor.calibration = self.cal
         self.result = None
         self._busy = False
+        self.recorded = {}  # command -> pitch recorded this session (kept in place)
 
         self.win = tk.Toplevel(root)
         self.win.title("whistle_bot: calibrate whistle")
@@ -127,13 +130,21 @@ class CalibrationWindow:
                       "or lower Min loudness.")
             return
         try:
-            bands = record_band(self._bands_from_entries(), cmd, center)
+            bands, moved = record_band(self._bands_from_entries(), cmd, center,
+                                       fixed={c: f for c, f in self.recorded.items()
+                                              if c is not cmd})
         except ValueError as exc:
             self._say(str(exc))
             return
         self._show_bands(bands)
+        self.recorded[cmd] = center
         self.heard[cmd].config(text=f"{center:.0f} Hz")
-        self._say(f"{LABELS[cmd]} set to {center:.0f} Hz.", "green")
+        for other in moved:
+            self.recorded.pop(other, None)
+            self.heard[other].config(text="moved: record it")
+        note = (f" Moved {', '.join(LABELS[m] for m in moved)} out of the way; "
+                "record it too." if moved else "")
+        self._say(f"{LABELS[cmd]} set to {center:.0f} Hz.{note}", "green")
 
     def _measure_noise(self):
         if self._busy:
@@ -153,6 +164,7 @@ class CalibrationWindow:
     def _defaults(self):
         self._show_bands(Bands())
         self.min_rms.set(f"{Calibration().min_rms:.0f}")
+        self.recorded.clear()
         for label in self.heard.values():
             label.config(text="")
 

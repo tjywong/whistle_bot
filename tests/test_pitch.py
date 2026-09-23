@@ -10,6 +10,12 @@ def test_finds_whistle_pitch(freq):
     assert dominant_frequency(tone(freq)) == pytest.approx(freq, abs=25)
 
 
+@pytest.mark.parametrize("freq", [712.3, 1003.7, 1234.5, 2718.2])
+def test_pitch_is_accurate_between_fft_bins(freq):
+    # Bins are ~21.5 Hz wide; interpolation should land within a few Hz.
+    assert dominant_frequency(tone(freq)) == pytest.approx(freq, abs=3)
+
+
 def test_silence_is_not_a_whistle():
     assert dominant_frequency(silence()) is None
 

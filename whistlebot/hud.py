@@ -11,6 +11,8 @@ FULL_SCALE = 32768.0
 DB_FLOOR = -100.0
 BAND_STYLE = {
     Command.STOP: ("STOP", "#5a1f1f"),
+    Command.FORWARD: ("FWD", "#1f5a5a"),
+    Command.BACKWARD: ("BACK", "#5a3a1f"),
     Command.LEFT: ("LEFT", "#1f3a5a"),
     Command.RIGHT: ("RIGHT", "#1f5a3a"),
     Command.SPEED_UP: ("FASTER", "#5a4a1f"),
