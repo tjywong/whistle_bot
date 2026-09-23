@@ -8,7 +8,7 @@ from whistlebot.commands import Bands, Command, WhistleDecoder, classify
     (700, Command.STOP),
     (1200, Command.LEFT),
     (1800, Command.RIGHT),
-    (2500, Command.SPEED_UP),
+    (2500, Command.SLOW_DOWN),
     (3500, Command.GOAL),
 ])
 def test_classify(freq, expected):
@@ -35,7 +35,7 @@ def test_gaps_between_ranges_are_ignored():
 def test_any_order_of_ranges():
     b = Bands(stop=(3000, 3500), goal=(600, 700), backward=(750, 950),
               left=(1000, 1400), right=(1500, 2000), forward=(2050, 2150),
-              speed_up=(2200, 2800)).validate()
+              slow_down=(2200, 2800)).validate()
     assert classify(3200, b) is Command.STOP
     assert classify(650, b) is Command.GOAL
     assert [c for c, _ in b.items()][0] is Command.GOAL
@@ -64,7 +64,8 @@ LEGACY = {"stop": [714, 948], "left": [948, 1175], "right": [1175, 1461],
 
 def test_legacy_ranges_are_kept():
     b = Bands.from_dict(LEGACY).validate()
-    assert b.stop == (714, 948) and b.speed_up == (1510, 1956)
+    # the recorded "speed_up" whistle becomes "slow_down"
+    assert b.stop == (714, 948) and b.slow_down == (1510, 1956)
 
 
 def test_new_commands_fitted_into_largest_gap():
@@ -77,7 +78,7 @@ def test_new_commands_fitted_into_largest_gap():
 
 def test_no_room_for_new_commands_raises():
     full = {"stop": [600, 1500], "left": [1500, 2500], "right": [2500, 3500],
-            "speed_up": [3500, 4000], "goal": [4000, 5000]}
+            "slow_down": [3500, 4000], "goal": [4000, 5000]}
     with pytest.raises(ValueError, match="no free"):
         Bands.from_dict(full)
 
@@ -89,7 +90,7 @@ def feed_all(decoder, freqs):
 def test_fires_once_after_hold():
     d = WhistleDecoder(hold_frames=3)
     out = feed_all(d, [2500] * 6)
-    assert out == [None, None, Command.SPEED_UP, None, None, None]
+    assert out == [None, None, Command.SLOW_DOWN, None, None, None]
 
 
 def test_short_blip_is_ignored():

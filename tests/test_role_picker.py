@@ -14,6 +14,14 @@ def test_ball_with_card():
     assert validate_choice(Role.BALL, " red:1234 ") == (Role.BALL, ("red", "1234"))
 
 
+def test_blank_card_uses_motor_card():
+    assert validate_choice("ball", "", default_card=("blue", "3685")) == (Role.BALL, ("blue", "3685"))
+
+
+def test_typed_card_overrides_motor_card():
+    assert validate_choice("ball", "red:1", default_card=("blue", "3685")) == (Role.BALL, ("red", "1"))
+
+
 def test_ball_without_card_rejected():
     with pytest.raises(ValueError, match="Color Sensor"):
         validate_choice("ball", "")
@@ -62,3 +70,24 @@ def test_picker_goalie_skips_sensor(root):
     picker = RolePicker(root, "ok", connect_sensor=connected.append)
     picker._pick(Role.GOALIE)
     assert picker.result == (Role.GOALIE, None) and connected == []
+
+
+def test_picker_prefills_and_connects_with_motor_card(root):
+    connected = []
+    picker = RolePicker(root, "ok", connect_sensor=connected.append, motor_card=("blue", "3685"))
+    assert picker.card.get() == "blue:3685"
+    picker._pick(Role.BALL)
+    assert connected == [("blue", "3685")] and picker.result == (Role.BALL, ("blue", "3685"))
+
+
+def test_picker_blank_card_falls_back_to_motor_card(root):
+    connected = []
+    picker = RolePicker(root, "ok", connect_sensor=connected.append, motor_card=("blue", "3685"))
+    picker.card.set("")
+    picker._pick(Role.BALL)
+    assert connected == [("blue", "3685")]
+
+
+def test_sensor_card_option_beats_motor_card(root):
+    picker = RolePicker(root, "ok", ("red", "7"), motor_card=("blue", "3685"))
+    assert picker.card.get() == "red:7"

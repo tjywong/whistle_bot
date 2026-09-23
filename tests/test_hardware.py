@@ -59,22 +59,42 @@ def test_unknown_card_color():
         _connect(FakeLegoDevice(), ("plaid", "1"))
 
 
-def test_forward_spins_sides_opposite_ways():
+def test_forward_spins_outputs_opposite_ways():
     m, dev = motor()
     m.set_speeds(40, 40)
-    assert dev.calls == [("run", le.MOTOR_LEFT, CCW, 40), ("run", le.MOTOR_RIGHT, CW, 40)]
+    assert sorted(dev.calls) == sorted([("run", le.MOTOR_LEFT, CW, 40),
+                                        ("run", le.MOTOR_RIGHT, CCW, 40)])
 
 
 def test_reverse_flips_directions():
     m, dev = motor()
     m.set_speeds(-20, -20)
-    assert dev.calls == [("run", le.MOTOR_LEFT, CW, 20), ("run", le.MOTOR_RIGHT, CCW, 20)]
+    assert sorted(dev.calls) == sorted([("run", le.MOTOR_LEFT, CCW, 20),
+                                        ("run", le.MOTOR_RIGHT, CW, 20)])
+
+
+def test_car_left_wheel_is_motor_right_output_by_default():
+    # Forward was right but turns were mirrored on the real robot, so the
+    # motor's outputs are crossed: the car's left wheel is the RIGHT output.
+    m, dev = motor()
+    m.set_speeds(10, 90)   # turning left: left wheel slow
+    speed_of = {c[1]: c[3] for c in dev.calls}
+    assert speed_of[le.MOTOR_RIGHT] == 10 and speed_of[le.MOTOR_LEFT] == 90
+
+
+def test_swap_sides_off_uses_matching_outputs():
+    dev = FakeLegoDevice()
+    m = LegoDoubleMotor(swap_sides=False, device=dev)
+    m.set_speeds(10, 90)
+    speed_of = {c[1]: c[3] for c in dev.calls}
+    assert speed_of[le.MOTOR_LEFT] == 10 and speed_of[le.MOTOR_RIGHT] == 90
 
 
 def test_pivot_left():
     m, dev = motor()
-    m.set_speeds(-20, 20)
-    assert dev.calls == [("run", le.MOTOR_LEFT, CW, 20), ("run", le.MOTOR_RIGHT, CW, 20)]
+    m.set_speeds(-20, 20)   # left wheel back, right wheel forward
+    assert sorted(dev.calls) == sorted([("run", le.MOTOR_RIGHT, CW, 20),
+                                        ("run", le.MOTOR_LEFT, CW, 20)])
 
 
 def test_full_stop_stops_both():
@@ -86,14 +106,15 @@ def test_full_stop_stops_both():
 def test_one_side_zero_stops_that_side():
     m, dev = motor()
     m.set_speeds(0, 30)
-    assert dev.calls == [("stop", le.MOTOR_LEFT), ("run", le.MOTOR_RIGHT, CW, 30)]
+    assert dev.calls == [("stop", le.MOTOR_RIGHT), ("run", le.MOTOR_LEFT, CW, 30)]
 
 
 def test_reversed_flags_are_configurable():
     dev = FakeLegoDevice()
-    m = LegoDoubleMotor(left_reversed=False, right_reversed=True, device=dev)
+    m = LegoDoubleMotor(left_reversed=True, right_reversed=False, device=dev)
     m.set_speeds(10, 10)
-    assert dev.calls == [("run", le.MOTOR_LEFT, CW, 10), ("run", le.MOTOR_RIGHT, CCW, 10)]
+    assert sorted(dev.calls) == sorted([("run", le.MOTOR_LEFT, CCW, 10),
+                                        ("run", le.MOTOR_RIGHT, CW, 10)])
 
 
 def test_speed_clamped():

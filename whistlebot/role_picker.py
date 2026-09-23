@@ -7,15 +7,19 @@ from .game import Role
 from .hardware import parse_card
 
 
-def validate_choice(role, card_text, need_sensor=True):
-    """Return (Role, sensor_card or None), or raise ValueError with a message."""
+def validate_choice(role, card_text, need_sensor=True, default_card=None):
+    """Return (Role, sensor_card or None), or raise ValueError with a message.
+
+    A blank card falls back to ``default_card`` (the Double Motor's card).
+    """
     role = Role(role)
     card_text = card_text.strip()
+    card = parse_card(card_text) if card_text else default_card
     if role is Role.GOALIE or not need_sensor:
-        return role, parse_card(card_text) if card_text else None
-    if not card_text:
+        return role, card
+    if not card:
         raise ValueError("The ball needs its Color Sensor card (e.g. red:1234).")
-    return role, parse_card(card_text)
+    return role, card
 
 
 class RolePicker:
@@ -28,8 +32,10 @@ class RolePicker:
     """
 
     def __init__(self, root, status, sensor_card=None, need_sensor=True,
-                 connect_sensor=None, on_calibrate=None, calibration_text=""):
+                 connect_sensor=None, on_calibrate=None, calibration_text="",
+                 motor_card=None):
         self.root = root
+        self.motor_card = motor_card
         self.need_sensor = need_sensor
         self.connect_sensor = connect_sensor
         self.on_calibrate = on_calibrate
@@ -47,7 +53,9 @@ class RolePicker:
                   font=("TkDefaultFont", 14, "bold")).grid(columnspan=2, pady=(8, 12))
 
         ttk.Label(frame, text="Ball's Color Sensor card:").grid(row=2, column=0, sticky="w")
-        self.card = tk.StringVar(value=f"{sensor_card[0]}:{sensor_card[1]}" if sensor_card else "")
+        # Defaults to the card the Double Motor connected with.
+        card = sensor_card or motor_card
+        self.card = tk.StringVar(value=f"{card[0]}:{card[1]}" if card else "")
         ttk.Entry(frame, textvariable=self.card, width=14).grid(row=2, column=1, sticky="w")
 
         ttk.Button(frame, text="⚽  Ball", command=lambda: self._pick(Role.BALL)).grid(
@@ -82,7 +90,8 @@ class RolePicker:
 
     def _pick(self, role):
         try:
-            role, card = validate_choice(role, self.card.get(), self.need_sensor)
+            role, card = validate_choice(role, self.card.get(), self.need_sensor,
+                                         default_card=self.motor_card)
             if role is Role.BALL and self.connect_sensor and card:
                 self.error.config(text="Connecting to Color Sensor…", foreground="gray")
                 self.win.update_idletasks()

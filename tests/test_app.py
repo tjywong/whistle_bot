@@ -40,11 +40,13 @@ def test_whistles_ignored_before_start():
 def test_whistle_drives_after_start():
     app, motors, *_ = make(Role.BALL)
     start(app)
-    whistle(app, 2500, 3)
-    assert motors.last == (20, 20)
-    whistle(app, 1350, 3)
-    assert motors.last == (8, 20)
-    whistle(app, 700, 3)
+    whistle(app, 2000, 3)            # forward: full speed
+    assert motors.last == (100, 100)
+    whistle(app, 2500, 3)            # slow down
+    assert motors.last == (80, 80)
+    whistle(app, 1350, 3)            # left
+    assert motors.last == (32, 80)
+    whistle(app, 700, 3)             # stop
     assert motors.last == (0, 0)
 
 
@@ -52,9 +54,9 @@ def test_whistle_forward_and_backward():
     app, motors, *_ = make(Role.GOALIE)
     start(app)
     whistle(app, 2000, 3)
-    assert motors.last == (20, 20)
+    assert motors.last == (100, 100)
     whistle(app, 1000, 3)
-    assert motors.last == (-20, -20)
+    assert motors.last == (-100, -100)
 
 
 def test_ball_caught_by_goalie():

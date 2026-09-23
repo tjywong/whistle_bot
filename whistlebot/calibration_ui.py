@@ -15,7 +15,7 @@ LABELS = {
     Command.BACKWARD: "Backward",
     Command.LEFT: "Turn left",
     Command.RIGHT: "Turn right",
-    Command.SPEED_UP: "Speed up",
+    Command.SLOW_DOWN: "Slow down",
     Command.GOAL: "GOAL (hold long)",
 }
 

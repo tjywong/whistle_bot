@@ -45,25 +45,32 @@ class LegoDoubleMotor:
     """LEGO Education Double Motor: one unit driving the left and right wheels.
 
     The two sides face opposite ways, so "forward" is counter-clockwise on
-    one side and clockwise on the other. If the car drives backwards or
-    spins, flip ``left_reversed`` / ``right_reversed``. Pass ``device`` to
-    inject a fake in tests.
+    one output and clockwise on the other. ``left_reversed`` /
+    ``right_reversed`` refer to the motor's LEFT / RIGHT outputs: flip them
+    if the car drives backwards. ``swap_sides`` means the motor's LEFT
+    output drives the car's right wheel (and vice versa): flip it if
+    forward is right but turns are mirrored. Pass ``device`` to inject a
+    fake in tests.
     """
 
-    def __init__(self, card=MOTOR_CARD, left_reversed=True, right_reversed=False,
-                 device=None):
+    def __init__(self, card=MOTOR_CARD, left_reversed=False, right_reversed=True,
+                 swap_sides=True, device=None):
         import legoeducation as le
         self._le = le
         self.reversed = {le.MOTOR_LEFT: left_reversed, le.MOTOR_RIGHT: right_reversed}
+        # Which motor output drives the car's left / right wheel.
+        self.left_wheel = le.MOTOR_RIGHT if swap_sides else le.MOTOR_LEFT
+        self.right_wheel = le.MOTOR_LEFT if swap_sides else le.MOTOR_RIGHT
         self.device = device or _connect(le.DoubleMotor(), card)
 
     def set_speeds(self, left, right):
+        """Car wheel speeds: ``left`` for the car's left wheel, ``right`` for its right."""
         le = self._le
         if left == 0 and right == 0:
             self.device.motor_stop(motor=le.MOTOR_BOTH)
             return
-        self._run(le.MOTOR_LEFT, left)
-        self._run(le.MOTOR_RIGHT, right)
+        self._run(self.left_wheel, left)
+        self._run(self.right_wheel, right)
 
     def _run(self, motor, speed):
         le = self._le

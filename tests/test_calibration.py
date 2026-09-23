@@ -77,7 +77,7 @@ def test_half_step_whistles_detected_end_to_end(base):
 
 def test_record_every_command_in_any_order():
     whistles = [(Command.GOAL, 800), (Command.BACKWARD, 1100), (Command.LEFT, 1300),
-                (Command.RIGHT, 1600), (Command.FORWARD, 1950), (Command.SPEED_UP, 2500),
+                (Command.RIGHT, 1600), (Command.FORWARD, 1950), (Command.SLOW_DOWN, 2500),
                 (Command.STOP, 3200)]
     b, fixed = Bands(), {}
     for cmd, f in whistles:

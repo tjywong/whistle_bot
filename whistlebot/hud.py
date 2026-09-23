@@ -5,9 +5,11 @@ import tkinter as tk
 import numpy as np
 
 from .commands import Bands, Command
-from .pitch import MAX_HZ, MIN_RMS, SAMPLE_RATE
+from .pitch import MIN_RMS, SAMPLE_RATE
 
 FULL_SCALE = 32768.0
+FFT_LO_HZ = 800.0    # frequency range shown on the FFT plot
+FFT_HI_HZ = 3000.0
 DB_FLOOR = -100.0
 BAND_STYLE = {
     Command.STOP: ("STOP", "#5a1f1f"),
@@ -15,7 +17,7 @@ BAND_STYLE = {
     Command.BACKWARD: ("BACK", "#5a3a1f"),
     Command.LEFT: ("LEFT", "#1f3a5a"),
     Command.RIGHT: ("RIGHT", "#1f5a3a"),
-    Command.SPEED_UP: ("FASTER", "#5a4a1f"),
+    Command.SLOW_DOWN: ("SLOWER", "#5a4a1f"),
     Command.GOAL: ("GOAL", "#4a1f5a"),
 }
 
@@ -39,19 +41,20 @@ def spectrum_db(samples, sample_rate=SAMPLE_RATE):
     return freqs, 20 * np.log10(mags + 1e-12)
 
 
-def freq_to_x(freq, width, max_hz=MAX_HZ):
-    return freq / max_hz * width
+def freq_to_x(freq, width, lo_hz=FFT_LO_HZ, hi_hz=FFT_HI_HZ):
+    return (freq - lo_hz) / (hi_hz - lo_hz) * width
 
 
 def db_to_y(db, height, floor=DB_FLOOR):
     return float(np.clip(db / floor, 0.0, 1.0)) * height
 
 
-def spectrum_points(samples, width, height, sample_rate=SAMPLE_RATE, max_hz=MAX_HZ):
-    """Flat canvas coordinates for the FFT from 0 to ``max_hz``."""
+def spectrum_points(samples, width, height, sample_rate=SAMPLE_RATE,
+                    lo_hz=FFT_LO_HZ, hi_hz=FFT_HI_HZ):
+    """Flat canvas coordinates for the FFT between ``lo_hz`` and ``hi_hz``."""
     freqs, db = spectrum_db(samples, sample_rate)
-    keep = freqs <= max_hz
-    xs = freq_to_x(freqs[keep], width, max_hz)
+    keep = (freqs >= lo_hz) & (freqs <= hi_hz)
+    xs = freq_to_x(freqs[keep], width, lo_hz, hi_hz)
     ys = np.clip(db[keep] / DB_FLOOR, 0.0, 1.0) * height
     return np.column_stack([xs, ys]).ravel().tolist()
 
@@ -92,11 +95,14 @@ class Hud:
         self.wave.create_line(0, self.H / 2, self.W, self.H / 2, fill="#333")
         self.wave_line = self.wave.create_line(0, 0, 0, 0, fill="#3cf", width=1)
 
-        tk.Label(root, text=f"FFT (0–{MAX_HZ:.0f} Hz, dBFS)", fg="#aaa", bg="#111",
+        tk.Label(root, text=f"FFT ({FFT_LO_HZ:.0f}–{FFT_HI_HZ:.0f} Hz, dBFS)", fg="#aaa", bg="#111",
                  anchor="w").pack(fill="x", padx=8, pady=(6, 0))
         self.fft = tk.Canvas(root, width=self.W, height=self.H, bg="black", highlightthickness=0)
         self.fft.pack(padx=8, pady=(0, 8))
         for label, lo, hi, colour in band_regions(bands):
+            lo, hi = max(lo, FFT_LO_HZ), min(hi, FFT_HI_HZ)
+            if lo >= hi:
+                continue  # range lies outside the plotted window
             x0, x1 = freq_to_x(lo, self.W), freq_to_x(hi, self.W)
             self.fft.create_rectangle(x0, 0, x1, self.H, fill=colour, outline="")
             self.fft.create_text((x0 + x1) / 2, 10, text=label, fill="#ccc", font=("Menlo", 10))
@@ -116,7 +122,7 @@ class Hud:
                             *spectrum_points(samples, self.W, self.H, self.sample_rate))
 
         freq = self.app.last_freq
-        if freq is not None:
+        if freq is not None and FFT_LO_HZ <= freq <= FFT_HI_HZ:
             x = freq_to_x(freq, self.W)
             self.fft.coords(self.peak_marker, x, 0, x, self.H)
             self.fft.itemconfig(self.peak_marker, state="normal")

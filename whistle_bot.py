@@ -39,7 +39,8 @@ def parse_args():
                         help="Double Motor connection card as color:serial "
                              "(default: blue:3685)")
     parser.add_argument("--sensor-card", type=parse_card,
-                        help="Color Sensor card as color:serial, pre-filled in the popup")
+                        help="Color Sensor card as color:serial "
+                             "(default: the same card as the Double Motor)")
     parser.add_argument("--dry-run", action="store_true",
                         help="print motor speeds instead of driving the LEGO motors")
     parser.add_argument("--calibration", type=Path,
@@ -121,7 +122,8 @@ def main():
                             need_sensor=not (args.dry_run or args.no_mqtt),
                             connect_sensor=None if args.dry_run else connect_sensor,
                             on_calibrate=run_calibration,
-                            calibration_text=describe(calibration)).show()
+                            calibration_text=describe(calibration),
+                            motor_card=args.motor_card).show()
         devices.extend(sensors)
         if picked is None or quitting:
             return

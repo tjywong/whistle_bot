@@ -6,9 +6,9 @@ from .commands import Command
 class Drive:
     """Keeps speed, direction and steering state and pushes it to the motors.
 
-    FORWARD/BACKWARD pick the direction of travel (starting at ``step`` if
-    stopped). SPEED_UP adds ``step`` (up to ``max_speed``) in the current
-    direction and straightens out. LEFT/RIGHT keep turning until the next
+    FORWARD/BACKWARD drive at full speed (``max_speed``) in that direction.
+    SLOW_DOWN takes ``step`` off the speed (never below ``step``; use STOP
+    to stop) and straightens out. LEFT/RIGHT keep turning until the next
     command; while stopped they pivot in place so you can aim at the goal.
     STOP zeroes everything and resets the direction to forward.
     """
@@ -23,12 +23,13 @@ class Drive:
         self.steer = 0       # -1 left, 0 straight, +1 right
 
     def apply(self, cmd):
-        if cmd is Command.SPEED_UP:
-            self.speed = min(self.speed + self.step, self.max_speed)
+        if cmd is Command.SLOW_DOWN:
+            if self.speed:
+                self.speed = max(self.speed - self.step, self.step)
             self.steer = 0
         elif cmd in (Command.FORWARD, Command.BACKWARD):
             self.direction = 1 if cmd is Command.FORWARD else -1
-            self.speed = self.speed or self.step
+            self.speed = self.max_speed
             self.steer = 0
         elif cmd is Command.STOP:
             self.speed = 0
@@ -50,11 +51,11 @@ class Drive:
         if self.speed == 0:
             pivot = self.step * self.steer
             return pivot, -pivot
-        fast = self.speed * self.direction
-        slow = round(self.speed * self.turn_ratio) * self.direction
+        outer = self.speed * self.direction  # wheel on the outside of the turn
+        inner = round(self.speed * self.turn_ratio) * self.direction
         if self.steer < 0:
-            return slow, fast
-        return fast, slow
+            return inner, outer
+        return outer, inner
 
     def halt(self):
         self.speed = 0

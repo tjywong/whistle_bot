@@ -12,7 +12,7 @@ class Command(Enum):
     BACKWARD = "backward"
     LEFT = "left"
     RIGHT = "right"
-    SPEED_UP = "speed_up"
+    SLOW_DOWN = "slow_down"
     GOAL = "goal"
 
 
@@ -28,7 +28,7 @@ class Bands:
     left: tuple = (1200.0, 1500.0)
     right: tuple = (1500.0, 1850.0)
     forward: tuple = (1850.0, 2200.0)
-    speed_up: tuple = (2200.0, 3000.0)
+    slow_down: tuple = (2200.0, 3000.0)
     goal: tuple = (3000.0, 4500.0)
 
     def get(self, cmd):
@@ -61,11 +61,17 @@ class Bands:
         """Build from saved ranges. Commands missing from ``data`` (e.g. ones
         added after it was saved) are fitted into the largest free gap."""
         names = {f.name for f in fields(cls)}
+        data = {LEGACY_NAMES.get(k, k): v for k, v in data.items()}
         known = {k: (float(v[0]), float(v[1])) for k, v in data.items() if k in names}
         missing = [c for c in Command if c.value not in known]
         if not missing or not known:
             return cls(**known)
         return fit_into_gap(cls(**known), missing)
+
+
+# Commands renamed since older calibration files were saved: old -> new.
+# The whistle recorded for "speed up" now means "slow down".
+LEGACY_NAMES = {"speed_up": "slow_down"}
 
 
 def fit_into_gap(bands, commands, low_hz=600.0, margin_frac=0.05):
