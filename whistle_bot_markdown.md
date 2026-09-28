@@ -35,10 +35,10 @@ The `CFLAGS` / `LDFLAGS` tell pip where Homebrew keeps PortAudio. Without them, 
 
 ```sh
 # Game day: class topic
-venv/bin/python whistle_bot.py --broker broker.hivemq.com
+venv/bin/python whistle_bot.py
 
 # Solo testing on a private topic that classmates' robots don't hear
-venv/bin/python whistle_bot.py --broker broker.hivemq.com --test-topic
+venv/bin/python whistle_bot.py --test-topic
 
 # Drive by whistle with no MQTT at all (starts immediately)
 venv/bin/python whistle_bot.py --no-mqtt
@@ -57,7 +57,7 @@ Press **q** in any window (or click **Quit**) to stop. This halts the motors and
 
 | Option | Meaning |
 |---|---|
-| `--broker HOST` | MQTT broker (required unless `--no-mqtt`) |
+| `--broker HOST` | MQTT broker (default `test.mosquitto.org`) |
 | `--port N` | Broker port (default 1883) |
 | `--topic T` / `--test-topic` | Topic to use. Default `ME193/Rogers`; the test topic is `ME193/Rogers/tyler-test` |
 | `--motor-card color:serial` | Double Motor card (default `blue:3685`) |
@@ -154,10 +154,10 @@ The referee window stands in for the referee and the opponent:
 
 ```sh
 # Terminal 1: referee window with Start / Ball caught / Ball scored buttons and a live log
-venv/bin/python MQTT.py --broker broker.hivemq.com --test-topic referee
+venv/bin/python MQTT.py --test-topic referee
 
 # Terminal 2: the robot on the same private topic
-venv/bin/python whistle_bot.py --broker broker.hivemq.com --test-topic
+venv/bin/python whistle_bot.py --test-topic
 ```
 
 - **Always click Start first,** then end the round with a button (Goalie) or by whistling GOAL or covering the sensor (Ball).
@@ -165,12 +165,12 @@ venv/bin/python whistle_bot.py --broker broker.hivemq.com --test-topic
 - **Command-line helpers:**
 
   ```sh
-  venv/bin/python MQTT.py --broker broker.hivemq.com --test-topic watch             # print all traffic
-  venv/bin/python MQTT.py --broker broker.hivemq.com --test-topic start             # send start
-  venv/bin/python MQTT.py --broker broker.hivemq.com --test-topic send ball_caught  # send anything
+  venv/bin/python MQTT.py --test-topic watch             # print all traffic
+  venv/bin/python MQTT.py --test-topic start             # send start
+  venv/bin/python MQTT.py --test-topic send ball_caught  # send anything
   ```
 
-- **Privacy:** `broker.hivemq.com` is public. The test topic keeps classmates' robots (on `ME193/Rogers`) from reacting, but anyone who subscribes to it can still read it.
+- **Privacy:** `test.mosquitto.org` is public. The test topic keeps classmates' robots (on `ME193/Rogers`) from reacting, but anyone who subscribes to it can still read it.
 
 ---
 

@@ -8,11 +8,12 @@ opponent before the match; this is the only place to change them.
 
 Game-day helper (no robot needed):
 
-    python MQTT.py --broker <host> start            # kick off the round
-    python MQTT.py --broker <host> send ball_scored # publish any message
-    python MQTT.py --broker <host> watch            # print everything on the topic
-    python MQTT.py --broker <host> referee          # window with buttons + live log
+    python MQTT.py start            # kick off the round
+    python MQTT.py send ball_scored # publish any message
+    python MQTT.py watch            # print everything on the topic
+    python MQTT.py referee          # window with buttons + live log
 
+The broker defaults to BROKER below; pass --broker <host> to use another.
 Add --test-topic to any of these (and to whistle_bot.py) to use a private
 topic for solo testing, so classmates' robots on the class topic are
 not started or stopped by your tests.
@@ -23,6 +24,7 @@ import time
 
 import paho.mqtt.client as mqtt
 
+BROKER = "test.mosquitto.org"
 TOPIC = "ME193/Rogers"
 TEST_TOPIC = "ME193/Rogers/tyler-test"  # solo testing; class robots don't hear it
 
@@ -86,7 +88,8 @@ def add_topic_args(parser):
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--broker", required=True, help="MQTT broker host")
+    parser.add_argument("--broker", default=BROKER,
+                        help=f"MQTT broker host (default: {BROKER})")
     parser.add_argument("--port", type=int, default=1883)
     add_topic_args(parser)
     sub = parser.add_subparsers(dest="cmd", required=True)

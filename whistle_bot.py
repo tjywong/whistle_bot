@@ -11,7 +11,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox
 
-from MQTT import add_topic_args
+from MQTT import BROKER, add_topic_args
 from whistlebot import calibration as cal
 from whistlebot.app import BotApp
 from whistlebot.audio_io import Microphone, Speaker
@@ -32,7 +32,8 @@ from whistlebot.sensing import LightGuard
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--broker", help="MQTT broker host (required unless --no-mqtt)")
+    parser.add_argument("--broker", default=BROKER,
+                        help=f"MQTT broker host (default: {BROKER})")
     parser.add_argument("--port", type=int, default=1883)
     add_topic_args(parser)
     parser.add_argument("--motor-card", type=parse_card, default=MOTOR_CARD,
@@ -48,10 +49,7 @@ def parse_args():
                         help="where whistle calibration is loaded from and saved to")
     parser.add_argument("--no-mqtt", action="store_true",
                         help="test mode: skip MQTT and start driving as soon as a role is picked")
-    args = parser.parse_args()
-    if not args.no_mqtt and not args.broker:
-        parser.error("--broker is required unless --no-mqtt is given")
-    return args
+    return parser.parse_args()
 
 
 def describe(calibration):
